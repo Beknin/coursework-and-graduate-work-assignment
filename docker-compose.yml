@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Основной контейнер (например, для администратора)
+  admin-panel:
+    build: .
+    image: thesis-app:latest
+    container_name: thesis-admin
+    environment:
+      - DISPLAY=${DISPLAY}      # проброс графики
+      - ROLE=admin              # роль (если используете)
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix   # X11 для GUI
+      - ./database:/app/database        # БД будет сохраняться на хосте
+      - ./uploads:/app/uploads          # для Excel-файлов
+    network_mode: host           # упрощает проброс дисплея
+
+  # Контейнер для преподавателя (запускается отдельно)
+  teacher-panel:
+    build: .
+    image: thesis-app:latest
+    container_name: thesis-teacher
+    environment:
+      - DISPLAY=${DISPLAY}
+      - ROLE=teacher
+      - USER_ID=1               # ID преподавателя (можно менять)
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./database:/app/database
+      - ./uploads:/app/uploads
+    network_mode: host
+    profiles:
+      - teacher                 # запускается только с --profile teacher
+
+  # Контейнер для студента
+  student-panel:
+    build: .
+    image: thesis-app:latest
+    container_name: thesis-student
+    environment:
+      - DISPLAY=${DISPLAY}
+      - ROLE=student
+      - USER_ID=2
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./database:/app/database
+      - ./uploads:/app/uploads
+    network_mode: host
+    profiles:
+      - student
