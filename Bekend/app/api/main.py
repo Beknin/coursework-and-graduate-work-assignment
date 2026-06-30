@@ -4,14 +4,16 @@ from app.api.routes import topics, students, teachers, enrollments, orders, admi
 from app.database import db
 from app.models import models
 
-# Создаём таблицы
+# Создаём таблицы при старте
 models.Base.metadata.create_all(bind=db.engine)
 
 app = FastAPI(
-    title="Система распределения тем ВКР",
+    title="Система распределения тем ВКР и курсовых работ",
+    description="Бэкенд для управления темами, записями и приказами",
     version="1.0.0"
 )
 
+# CORS для Tkinter-клиента
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,6 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Подключаем роутеры
 app.include_router(topics.router, prefix="/api/topics", tags=["Темы"])
 app.include_router(students.router, prefix="/api/students", tags=["Студенты"])
 app.include_router(teachers.router, prefix="/api/teachers", tags=["Преподаватели"])
