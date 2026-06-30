@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "thesis-app"
+version = "0.1.0"
+description = "Система распределения тем ВКР и курсовых работ"
+authors = ["Ваша команда <email@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+sqlalchemy = "^2.0.25"
+openpyxl = "^3.1.2"
+python-docx = "^1.1.0"
+Pillow = "^10.1.0"
+python-dotenv = "^1.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
