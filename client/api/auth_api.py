@@ -10,3 +10,20 @@ class AuthAPI:
 
     def get_me(self) -> dict:
         return self.client._request("GET", "/auth/me")
+    
+class MockAuthAPI:
+    def login(self, login: str, password: str, role: str):
+        return {
+            "token": "fake-token-123",
+            "user": {
+                "id": 1,
+                "login": login,
+                "role": role,
+                "full_name": "Тестовый Пользователь",
+                "group": "ПМИ-301" if role == "student" else None,
+                "department": "ИС" if role == "teacher" else None,
+            }
+        }
+
+    def get_me(self):
+        return self.login("admin", "pass", "admin")["user"]
