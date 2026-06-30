@@ -11,7 +11,7 @@ class LoginWindow(tk.Toplevel):
         self.resizable(False, False)
 
         self.api_client = APIClient()
-        self.auth_api = MockAuthAPI(self.api_client)
+        self.auth_api = MockAuthAPI()
 
         self._create_widgets()
 
