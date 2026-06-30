@@ -13,7 +13,6 @@ router = APIRouter()
 
 @router.get("/preliminary")
 def generate_preliminary_order(db: Session = Depends(get_db)):
-    """Сгенерировать предварительный приказ (декабрь)"""
     if not DeadlineChecker.can_generate_preliminary_order(db):
         raise HTTPException(status_code=403, detail="Дедлайн для генерации приказа ещё не наступил")
     
@@ -24,7 +23,6 @@ def generate_preliminary_order(db: Session = Depends(get_db)):
 
 @router.get("/final")
 def generate_final_order(db: Session = Depends(get_db)):
-    """Сгенерировать окончательный приказ (апрель)"""
     if not DeadlineChecker.can_generate_final_order(db):
         raise HTTPException(status_code=403, detail="Дедлайн для генерации приказа ещё не наступил")
     
