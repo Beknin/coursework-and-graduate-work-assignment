@@ -11,13 +11,11 @@ router = APIRouter()
 
 @router.get("/", response_model=List[schemas.TeacherResponse])
 def get_teachers(db: Session = Depends(get_db)):
-    """Получить всех преподавателей"""
     return db.query(models.Teacher).all()
 
 
 @router.post("/", response_model=schemas.TeacherResponse)
 def create_teacher(teacher: schemas.TeacherCreate, db: Session = Depends(get_db)):
-    """Добавить преподавателя"""
     db_teacher = models.Teacher(**teacher.model_dump())
     db.add(db_teacher)
     db.commit()
@@ -27,7 +25,6 @@ def create_teacher(teacher: schemas.TeacherCreate, db: Session = Depends(get_db)
 
 @router.put("/{teacher_id}")
 def update_teacher(teacher_id: int, teacher: schemas.TeacherCreate, db: Session = Depends(get_db)):
-    """Обновить данные преподавателя"""
     db_teacher = db.query(models.Teacher).filter(models.Teacher.id == teacher_id).first()
     if not db_teacher:
         raise HTTPException(status_code=404, detail="Преподаватель не найден")
@@ -42,8 +39,6 @@ def update_teacher(teacher_id: int, teacher: schemas.TeacherCreate, db: Session 
 
 @router.delete("/{teacher_id}")
 def delete_teacher(teacher_id: int, db: Session = Depends(get_db)):
-    """Удалить преподавателя"""
-    # Проверяем, есть ли темы
     count = db.query(models.Topic).filter(models.Topic.teacher_id == teacher_id).count()
     if count > 0:
         raise HTTPException(status_code=400, detail="Нельзя удалить преподавателя с темами")
