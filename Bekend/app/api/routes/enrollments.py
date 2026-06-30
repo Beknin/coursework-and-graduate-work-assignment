@@ -12,22 +12,17 @@ router = APIRouter()
 
 @router.post("/", response_model=schemas.EnrollmentResponse)
 def enroll_student(enrollment: schemas.EnrollmentCreate, db: Session = Depends(get_db)):
-    """Записать студента на тему"""
-    # 1. Проверка дедлайна
     if not DeadlineChecker.can_enroll(db):
         raise HTTPException(status_code=403, detail="Период записи закончился")
     
-    # 2. Проверка студента
     student = db.query(models.Student).filter(models.Student.id == enrollment.student_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Студент не найден")
     
-    # 3. Проверка темы
     topic = db.query(models.Topic).filter(models.Topic.id == enrollment.topic_id).first()
     if not topic:
         raise HTTPException(status_code=404, detail="Тема не найдена")
     
-    # 4. Проверка, не занята ли тема
     existing = db.query(models.Enrollment).filter(
         models.Enrollment.topic_id == enrollment.topic_id,
         models.Enrollment.status == "confirmed"
@@ -35,13 +30,12 @@ def enroll_student(enrollment: schemas.EnrollmentCreate, db: Session = Depends(g
     if existing:
         raise HTTPException(status_code=400, detail="Тема уже занята")
     
-    # 5. Проверка курса студента
     if topic.level == "ВКР" and student.course != 4:
         raise HTTPException(status_code=400, detail="На ВКР могут записываться только 4-й курс")
+    
     if topic.level == "Курсовая" and student.course not in [3, 4]:
         raise HTTPException(status_code=400, detail="Курсовая доступна для 3-го и 4-го курса")
     
-    # 6. Проверяем, не записан ли уже студент
     existing_student = db.query(models.Enrollment).filter(
         models.Enrollment.student_id == enrollment.student_id,
         models.Enrollment.topic_id == enrollment.topic_id
@@ -49,7 +43,6 @@ def enroll_student(enrollment: schemas.EnrollmentCreate, db: Session = Depends(g
     if existing_student:
         raise HTTPException(status_code=400, detail="Вы уже записаны на эту тему")
     
-    # 7. Создаём запись
     db_enrollment = models.Enrollment(
         student_id=enrollment.student_id,
         topic_id=enrollment.topic_id,
@@ -64,7 +57,6 @@ def enroll_student(enrollment: schemas.EnrollmentCreate, db: Session = Depends(g
 
 @router.put("/{enrollment_id}/confirm")
 def confirm_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
-    """Подтвердить запись (преподаватель)"""
     db_enrollment = db.query(models.Enrollment).filter(models.Enrollment.id == enrollment_id).first()
     if not db_enrollment:
         raise HTTPException(status_code=404, detail="Запись не найдена")
@@ -72,7 +64,6 @@ def confirm_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
     if db_enrollment.status != "pending":
         raise HTTPException(status_code=400, detail=f"Запись уже {db_enrollment.status}")
     
-    # Проверяем, не занята ли тема кем-то другим
     existing = db.query(models.Enrollment).filter(
         models.Enrollment.topic_id == db_enrollment.topic_id,
         models.Enrollment.status == "confirmed"
@@ -90,7 +81,6 @@ def confirm_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
 
 @router.put("/{enrollment_id}/reject")
 def reject_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
-    """Отклонить запись (преподаватель)"""
     db_enrollment = db.query(models.Enrollment).filter(models.Enrollment.id == enrollment_id).first()
     if not db_enrollment:
         raise HTTPException(status_code=404, detail="Запись не найдена")
