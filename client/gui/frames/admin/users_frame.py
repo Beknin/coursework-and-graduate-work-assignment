@@ -1,17 +1,20 @@
+from tkinter import ttk, messagebox
 from gui.widgets.table_view import TableView
-from api.users_api import UsersAPI
-from gui.dialogs.user_dialog import UserDialog
-from tkinter import ttk
+from client.api.users_api import UsersAPI
+from client.gui.dialogs.user_dialog import UserDialog
+
 
 class UsersFrame(ttk.Frame):
     def __init__(self, parent, api_client):
         super().__init__(parent)
         self.api = UsersAPI(api_client)
 
-        columns = ["id", "full_name", "login", "role", "group_or_dep"]
+        columns = ["id", "full_name", "login", "role"]
         column_names = {
-            "id": "ID", "full_name": "ФИО", "login": "Логин",
-            "role": "Роль", "group_or_dep": "Группа/Кафедра"
+            "id": "ID",
+            "full_name": "ФИО",
+            "login": "Логин",
+            "role": "Роль",
         }
         self.table = TableView(self, columns, column_names)
         self.table.pack(fill="both", expand=True)
@@ -27,10 +30,10 @@ class UsersFrame(ttk.Frame):
 
     def _load_data(self):
         try:
-            users = self.api.get_users()
+            users = self.api.get_all_users()
             self.table.set_data(users)
         except Exception as e:
-            self._show_error(str(e))
+            messagebox.showerror("Ошибка", f"Не удалось загрузить пользователей:\n{e}")
 
     def _add_user(self):
         dialog = UserDialog(self)
@@ -39,11 +42,12 @@ class UsersFrame(ttk.Frame):
                 self.api.create_user(dialog.result)
                 self._load_data()
             except Exception as e:
-                self._show_error(str(e))
+                messagebox.showerror("Ошибка", str(e))
 
     def _edit_user(self):
         selected = self.table.get_selected()
         if not selected:
+            messagebox.showwarning("Предупреждение", "Выберите пользователя для редактирования")
             return
         dialog = UserDialog(self, selected)
         if dialog.result:
@@ -51,16 +55,17 @@ class UsersFrame(ttk.Frame):
                 self.api.update_user(selected["id"], dialog.result)
                 self._load_data()
             except Exception as e:
-                self._show_error(str(e))
+                messagebox.showerror("Ошибка", str(e))
 
     def _delete_user(self):
         selected = self.table.get_selected()
         if not selected:
+            messagebox.showwarning("Предупреждение", "Выберите пользователя для удаления")
             return
-        from tkinter import messagebox
-        if messagebox.askyesno("Подтверждение", f"Удалить пользователя {selected['full_name']}?"):
+        if messagebox.askyesno("Подтверждение",
+                               f"Удалить пользователя {selected['full_name']}?"):
             try:
                 self.api.delete_user(selected["id"])
                 self._load_data()
             except Exception as e:
-                self._show_error(str(e))
+                messagebox.showerror("Ошибка", str(e))
