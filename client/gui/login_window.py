@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from api.client import APIClient
-from api.auth_api import MockAuthAPI
+from api.auth_api import AuthAPI
 
 class LoginWindow(tk.Toplevel):
     def __init__(self):
@@ -11,7 +11,7 @@ class LoginWindow(tk.Toplevel):
         self.resizable(False, False)
 
         self.api_client = APIClient()
-        self.auth_api = MockAuthAPI()
+        self.auth_api = AuthAPI(self.api_client)
 
         self._create_widgets()
 
