@@ -1,7 +1,7 @@
 from tkinter import ttk, messagebox
 from gui.widgets.table_view import TableView
-from client.api.users_api import UsersAPI
-from client.gui.dialogs.user_dialog import UserDialog
+from api.users_api import UsersAPI
+from gui.dialogs.user_dialog import UserDialog
 
 
 class UsersFrame(ttk.Frame):

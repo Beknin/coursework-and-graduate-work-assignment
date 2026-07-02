@@ -1,5 +1,5 @@
 # client/api/topics_api.py
-from .client import APIClient
+from api.client import APIClient
 
 
 class TopicsAPI:

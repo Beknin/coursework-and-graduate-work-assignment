@@ -1,5 +1,5 @@
 # client/api/enrollments_api.py
-from .client import APIClient
+from api.client import APIClient
 
 
 class EnrollmentsAPI:

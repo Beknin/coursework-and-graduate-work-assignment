@@ -1,4 +1,4 @@
-from .client import APIClient
+from api.client import APIClient
 
 class AuthAPI:
     def __init__(self, client: APIClient):

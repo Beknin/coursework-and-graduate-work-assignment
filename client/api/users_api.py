@@ -1,5 +1,5 @@
 # client/api/users_api.py
-from .client import APIClient
+from api.client import APIClient
 
 class UsersAPI:
     def __init__(self, client: APIClient):
