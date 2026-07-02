@@ -1,12 +1,12 @@
 from gui.widgets.table_view import TableView
-from api.users_api import MockUsersAPI
+from api.users_api import UsersAPI
 from gui.dialogs.user_dialog import UserDialog
 from tkinter import ttk
 
 class UsersFrame(ttk.Frame):
     def __init__(self, parent, api_client):
         super().__init__(parent)
-        self.api = MockUsersAPI(api_client)
+        self.api = UsersAPI(api_client)
 
         columns = ["id", "full_name", "login", "role", "group_or_dep"]
         column_names = {
