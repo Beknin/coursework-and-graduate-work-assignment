@@ -1,3 +1,4 @@
+# tests/test_teachers.py
 import pytest
 
 
@@ -38,13 +39,12 @@ def test_update_teacher(client, db, test_data):
 
 def test_delete_teacher(client, db):
     """Тест: удаление преподавателя"""
-    # Создаём преподавателя
     response = client.post("/api/teachers", json={
         "full_name": "Преподаватель на удаление",
         "position": "Доцент"
     })
     teacher_id = response.json()["id"]
-    
+
     response = client.delete(f"/api/teachers/{teacher_id}")
     assert response.status_code == 200
     assert response.json()["status"] == "deleted"
