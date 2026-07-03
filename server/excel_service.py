@@ -48,26 +48,26 @@ class ExcelService:
             })
         return teachers
 
-    # ===== НОВЫЙ МЕТОД ДЛЯ ВАШИХ ФАЙЛОВ =====
+
     @staticmethod
-def parse_students(file_path: str) -> List[Dict]:
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Файл {file_path} не найден")
+    def parse_students(file_path: str) -> List[Dict]:
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Файл {file_path} не найден")
 
-    wb = openpyxl.load_workbook(file_path)
-    ws = wb.active
+        wb = openpyxl.load_workbook(file_path)
+        ws = wb.active
 
-    students = []
-    # Пропускаем первую строку (заголовки)
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if row[0] is None:
-            continue
-        # Проверяем, что это не заголовок
-        if str(row[0]).strip() in ["ФИО", "№ п/п"]:
-            continue
-        students.append({
-            "full_name": str(row[0]).strip(),
-            "course": int(row[1]) if row[1] else 3,
-            "group_name": str(row[2]).strip() if row[2] else ""
-        })
-    return students
+        students = []
+        # Пропускаем первую строку (заголовки)
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row[0] is None:
+                continue
+            # Проверяем, что это не заголовок
+            if str(row[0]).strip() in ["ФИО", "№ п/п"]:
+                continue
+            students.append({
+                "full_name": str(row[0]).strip(),
+                "course": int(row[1]) if row[1] else 3,
+                "group_name": str(row[2]).strip() if row[2] else ""
+            })
+        return students

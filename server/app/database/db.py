@@ -10,7 +10,7 @@ DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'database', 'database.db')}"
 # Двигатель SQLAlchemy
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False}  # для SQLite
+    connect_args={"check_same_thread": False}
 )
 
 # Сессия для работы с БД
