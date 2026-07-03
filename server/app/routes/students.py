@@ -1,57 +1,68 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
 
 from app.database.db import get_db
-from app.models import models
-from app.schemas import schemas
+from app.models.models import User
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[schemas.StudentResponse])
+@router.get("/")
 def get_students(db: Session = Depends(get_db)):
-    return db.query(models.Student).all()
+    return [s.to_dict() for s in User.get_students(db)]
 
 
-@router.post("/", response_model=schemas.StudentResponse)
-def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
-    if student.course not in [3, 4]:
-        raise HTTPException(status_code=400, detail="Курс должен быть 3 или 4")
-    
-    db_student = models.Student(**student.model_dump())
-    db.add(db_student)
+@router.post("/api/students/")
+def create_student(data: dict, db: Session = Depends(get_db)):
+    full_name = data.get("full_name")
+    if not full_name:
+        raise HTTPException(status_code=400, detail="full_name обязателен")
+
+    login = data.get("login") or full_name.lower().replace(" ", "_")
+    existing = db.query(User).filter(User.login == login).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Логин '{login}' уже занят")
+
+    student = User(
+        full_name=full_name,
+        login=login,
+        role="student",
+        email=data.get("email"),
+        course=data.get("course", 1),
+        group_name=data.get("group_name"),
+    )
+    db.add(student)
     db.commit()
-    db.refresh(db_student)
-    return db_student
+    db.refresh(student)
+    return student.to_dict()
 
 
 @router.put("/{student_id}")
-def update_student(student_id: int, student: schemas.StudentCreate, db: Session = Depends(get_db)):
-    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
-    if not db_student:
+def update_student(student_id: int, data: dict, db: Session = Depends(get_db)):
+    student = User.get_student(db, student_id)
+    if not student:
         raise HTTPException(status_code=404, detail="Студент не найден")
-    
-    for key, value in student.model_dump().items():
-        setattr(db_student, key, value)
-    
+
+    if "login" in data and data["login"] != student.login:
+        existing = db.query(User).filter(User.login == data["login"]).first()
+        if existing:
+            raise HTTPException(status_code=400, detail=f"Логин '{data['login']}' уже занят")
+
+    updatable = ["full_name", "login", "email", "course", "group_name"]
+    for field in updatable:
+        if field in data:
+            setattr(student, field, data[field])
+
     db.commit()
-    db.refresh(db_student)
-    return {"status": "updated"}
+    db.refresh(student)
+    return student.to_dict()
 
 
 @router.delete("/{student_id}")
 def delete_student(student_id: int, db: Session = Depends(get_db)):
-    count = db.query(models.Enrollment).filter(
-        models.Enrollment.student_id == student_id
-    ).count()
-    if count > 0:
-        raise HTTPException(status_code=400, detail="Нельзя удалить студента с записями")
-    
-    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
-    if not db_student:
+    student = User.get_student(db, student_id)
+    if not student:
         raise HTTPException(status_code=404, detail="Студент не найден")
-    
-    db.delete(db_student)
+    db.delete(student)
     db.commit()
     return {"status": "deleted"}
