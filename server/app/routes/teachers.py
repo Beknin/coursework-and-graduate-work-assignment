@@ -7,33 +7,25 @@ from app.models.models import User
 router = APIRouter()
 
 
-@router.get("/api/teachers/")
+@router.get("/")
 def get_teachers(db: Session = Depends(get_db)):
-    """Получить всех преподавателей."""
-    teachers = db.query(User).filter(User.role == "teacher").all()
-    result = []
-    for t in teachers:
-        result.append({
-            "id": t.id,
-            "full_name": t.full_name,
-            "login": t.login,
-            "role": "teacher",
-            "email": t.email,
-            "department": t.department,
-            "position": t.position,
-            "degree": t.degree,
-            "contact": t.contact,
-        })
-    return result
+    return [t.to_dict() for t in User.get_teachers(db)]
 
 
-@router.post("/api/teachers/")
+@router.post("/")
 def create_teacher(data: dict, db: Session = Depends(get_db)):
-    """Создать преподавателя."""
     full_name = data.get("full_name")
+    if not full_name:
+        raise HTTPException(status_code=400, detail="full_name обязателен")
+
+    login = data.get("login") or full_name.lower().replace(" ", "_")
+    existing = db.query(User).filter(User.login == login).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Логин '{login}' уже занят")
+
     teacher = User(
         full_name=full_name,
-        login=data.get("login") or full_name.lower().replace(" ", "_"),
+        login=login,
         role="teacher",
         email=data.get("email"),
         department=data.get("department"),
@@ -44,30 +36,33 @@ def create_teacher(data: dict, db: Session = Depends(get_db)):
     db.add(teacher)
     db.commit()
     db.refresh(teacher)
-    return {
-        "id": teacher.id,
-        "full_name": teacher.full_name,
-        "role": "teacher",
-    }
+    return teacher.to_dict()
 
 
-@router.put("/api/teachers/{teacher_id}")
+@router.put("/{teacher_id}")
 def update_teacher(teacher_id: int, data: dict, db: Session = Depends(get_db)):
-    teacher = db.query(User).filter(User.id == teacher_id, User.role == "teacher").first()
+    teacher = User.get_teacher(db, teacher_id)
     if not teacher:
         raise HTTPException(status_code=404, detail="Преподаватель не найден")
 
-    for field in ["full_name", "login", "email", "department", "position", "degree", "contact"]:
+    if "login" in data and data["login"] != teacher.login:
+        existing = db.query(User).filter(User.login == data["login"]).first()
+        if existing:
+            raise HTTPException(status_code=400, detail=f"Логин '{data['login']}' уже занят")
+
+    updatable = ["full_name", "login", "email", "department", "position", "degree", "contact"]
+    for field in updatable:
         if field in data:
             setattr(teacher, field, data[field])
 
     db.commit()
-    return {"id": teacher.id, "full_name": teacher.full_name}
+    db.refresh(teacher)
+    return teacher.to_dict()
 
 
-@router.delete("/api/teachers/{teacher_id}")
+@router.delete("/{teacher_id}")
 def delete_teacher(teacher_id: int, db: Session = Depends(get_db)):
-    teacher = db.query(User).filter(User.id == teacher_id, User.role == "teacher").first()
+    teacher = User.get_teacher(db, teacher_id)
     if not teacher:
         raise HTTPException(status_code=404, detail="Преподаватель не найден")
     db.delete(teacher)

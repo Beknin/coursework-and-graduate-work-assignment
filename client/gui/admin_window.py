@@ -2,6 +2,9 @@ from tkinter import ttk
 from gui.app import App
 from gui.widgets.status_bar import StatusBar
 from gui.frames.admin.users_frame import UsersFrame
+from gui.frames.admin.topics_frame import TopicsFrame
+from gui.frames.admin.assign_frame import AssignFrame
+
 
 class AdminWindow(App):
     def __init__(self, user: dict, api_client):
@@ -23,11 +26,15 @@ class AdminWindow(App):
         self.users_frame = UsersFrame(notebook, self.api)
         notebook.add(self.users_frame, text="Пользователи")
 
-        for tab_name in ["Темы", "Назначения", "Отчёты"]:
-            frame = ttk.Frame(notebook)
-            ttk.Label(frame, text=f"Вкладка: {tab_name}",
-                      font=("Arial", 16)).pack(expand=True)
-            notebook.add(frame, text=tab_name)
+        self.topics_frame = TopicsFrame(notebook, self.api)
+        notebook.add(self.topics_frame, text="Темы")
+
+        self.assign_frame = AssignFrame(notebook, self.api)
+        notebook.add(self.assign_frame, text="Назначения")
+
+        report_frame = ttk.Frame(notebook)
+        ttk.Label(report_frame, text="Вкладка: Отчёты").pack(expand=True)
+        notebook.add(report_frame, text="Отчёты")
 
         self.status_bar = StatusBar(self.window)
         self.status_bar.set_status("Готово | Администратор")
