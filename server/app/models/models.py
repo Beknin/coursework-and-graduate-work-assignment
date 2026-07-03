@@ -6,88 +6,81 @@ from datetime import date
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, nullable=False)
     login = Column(String, unique=True, nullable=True)
+    password_hash = Column(String, nullable=True)
     role = Column(String, nullable=False)
-    
-    __mapper_args__ = {
-        'polymorphic_on': role,
-        'polymorphic_identity': 'user'
-    }
 
+    email = Column(String, nullable=True)
 
-class Student(User):
-    __tablename__ = "students"
-    
-    id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-    course = Column(Integer, nullable=False)
-    group_name = Column(String)
-    
-    __mapper_args__ = {
-        'polymorphic_identity': 'student'
-    }
-    
-    enrollments = relationship("Enrollment", back_populates="student")
+    course = Column(Integer, nullable=True)
+    group_name = Column(String, nullable=True)
 
+    department = Column(String, nullable=True)
+    position = Column(String, nullable=True)
+    degree = Column(String, nullable=True)
+    contact = Column(String, nullable=True)
 
-class Teacher(User):
-    __tablename__ = "teachers"
-    
-    id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-    position = Column(String)
-    degree = Column(String)
-    contact = Column(String)
-    
-    __mapper_args__ = {
-        'polymorphic_identity': 'teacher'
-    }
-    
-    topics = relationship("Topic", back_populates="teacher")
+    access_level = Column(String, nullable=True, default="full")
 
+    topics = relationship(
+        "Topic",
+        back_populates="teacher",
+        foreign_keys="Topic.teacher_id"
+    )
+    enrollments = relationship(
+        "Enrollment",
+        back_populates="student",
+        foreign_keys="Enrollment.student_id"
+    )
 
-class Admin(User):
-    __tablename__ = "admins"
-    
-    id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-    access_level = Column(String, default="full")
-    
-    __mapper_args__ = {
-        'polymorphic_identity': 'admin'
-    }
+    def __repr__(self):
+        return f"<User(id={self.id}, login='{self.login}', role='{self.role}')>"
 
 
 class Topic(Base):
     __tablename__ = "topics"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False)
-    level = Column(String, nullable=False)
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    level = Column(String, nullable=False)  # "coursework", "diploma"
     title = Column(String, nullable=False)
     description = Column(Text)
+    status = Column(String, default="free")  # "free", "assigned"
     created_at = Column(Date, default=date.today)
-    
-    teacher = relationship("Teacher", back_populates="topics")
-    enrollments = relationship("Enrollment", back_populates="topic")  # ← ИСПРАВЛЕНО!
+
+    teacher = relationship(
+        "User",
+        back_populates="topics",
+        foreign_keys=[teacher_id]
+    )
+    enrollments = relationship("Enrollment", back_populates="topic")
 
 
 class Enrollment(Base):
     __tablename__ = "enrollments"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     topic_id = Column(Integer, ForeignKey("topics.id"), nullable=False)
-    status = Column(String, default="pending")
-    confirmed_at = Column(Date)
-    
-    student = relationship("Student", back_populates="enrollments")
-    topic = relationship("Topic", back_populates="enrollments")  # ← ИСПРАВЛЕНО!
+    status = Column(String, default="pending")  # "pending", "approved", "rejected"
+    comment = Column(Text, nullable=True)
+    created_at = Column(Date, default=date.today)
+    confirmed_at = Column(Date, nullable=True)
+
+    student = relationship(
+        "User",
+        back_populates="enrollments",
+        foreign_keys=[student_id]
+    )
+    topic = relationship("Topic", back_populates="enrollments")
 
 
 class Deadline(Base):
     __tablename__ = "deadlines"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False, unique=True)
     date = Column(Date, nullable=False)
