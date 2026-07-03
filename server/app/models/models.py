@@ -81,7 +81,6 @@ class User(Base):
             "full_name": self.full_name,
             "login": self.login or "",
             "role": self.role,
-            "email": self.email,
             "course": self.course,
             "group_name": self.group_name,
             "department": self.department,
