@@ -11,7 +11,7 @@ from app.services.deadline_service import DeadlineChecker
 router = APIRouter()
 
 
-@router.get("/", response_model=List[schemas.TopicResponse])
+@router.get("/", response_model=List[schemas.TopicResponse], tags=["Темы"])
 def get_topics(db: Session = Depends(get_db)):
     """Получить все темы"""
     topics = db.query(models.Topic).all()
@@ -56,7 +56,6 @@ def create_topic(topic: schemas.TopicCreate, db: Session = Depends(get_db)):
 
 @router.get("/free", response_model=List[schemas.TopicResponse])
 def get_free_topics(db: Session = Depends(get_db)):
-    """Получить свободные темы"""
     taken_ids = db.query(models.Enrollment.topic_id).filter(
         models.Enrollment.status == "confirmed"
     ).subquery()
@@ -67,7 +66,8 @@ def get_free_topics(db: Session = Depends(get_db)):
     
     result = []
     for topic in free_topics:
-        topic_data = schemas.TopicResponse.model_validate(topic)
+        # Правильный способ: model_validate с from_attributes=True
+        topic_data = schemas.TopicResponse.model_validate(topic, from_attributes=True)
         topic_data.status = "free"
         result.append(topic_data)
     

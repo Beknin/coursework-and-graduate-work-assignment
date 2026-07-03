@@ -3,18 +3,29 @@ from datetime import date
 from typing import Optional
 
 
+# ===== USER =====
 class UserBase(BaseModel):
     full_name: str
-    login: Optional[str] = None
+    login: str
     role: str  # admin, teacher, student
 
 class UserCreate(UserBase):
-    pass
+    course: Optional[int] = None
+    group_name: Optional[str] = None
+    position: Optional[str] = None
+    degree: Optional[str] = None
+    contact: Optional[str] = None
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+    password: Optional[str] = None
 
 class UserResponse(UserBase):
     id: int
 
 
+# ===== STUDENT =====
 class StudentBase(UserBase):
     course: int
     group_name: Optional[str] = None
@@ -26,6 +37,7 @@ class StudentResponse(StudentBase):
     id: int
 
 
+# ===== TEACHER =====
 class TeacherBase(UserBase):
     position: Optional[str] = None
     degree: Optional[str] = None
@@ -38,16 +50,7 @@ class TeacherResponse(TeacherBase):
     id: int
 
 
-class AdminBase(UserBase):
-    access_level: str = "full"
-
-class AdminCreate(AdminBase):
-    pass
-
-class AdminResponse(AdminBase):
-    id: int
-
-
+# ===== TOPIC =====
 class TopicBase(BaseModel):
     teacher_id: int
     level: str
@@ -63,6 +66,7 @@ class TopicResponse(TopicBase):
     status: Optional[str] = None
 
 
+# ===== ENROLLMENT =====
 class EnrollmentBase(BaseModel):
     student_id: int
     topic_id: int
@@ -76,6 +80,7 @@ class EnrollmentResponse(EnrollmentBase):
     confirmed_at: Optional[date] = None
 
 
+# ===== DEADLINE =====
 class DeadlineBase(BaseModel):
     name: str
     date: date

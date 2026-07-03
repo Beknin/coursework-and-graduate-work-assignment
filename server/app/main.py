@@ -8,7 +8,9 @@ models.Base.metadata.create_all(bind=db.engine)
 
 app = FastAPI(
     title="Система распределения тем ВКР",
-    version="1.0.0"
+    version="1.0.0",
+    redoc_url="/redoc",
+    docs_url="/docs"
 )
 
 app.add_middleware(
@@ -27,9 +29,7 @@ app.include_router(enrollments.router, prefix="/api/enrollments", tags=["Зап�
 app.include_router(orders.router, prefix="/api/orders", tags=["Приказы"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Авторизация"])
 app.include_router(auth.router, prefix="/auth", tags=["Авторизация (клиент)"])
-
-# ГЛАВНОЕ: подключаем admin.router БЕЗ ПРЕФИКСА /api
-app.include_router(admin.router, prefix="", tags=["Пользователи"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Администрирование"])
 
 @app.get("/health")
 def health():
