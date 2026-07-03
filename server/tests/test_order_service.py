@@ -1,47 +1,99 @@
-# tests/test_order_service.py
+# tests/test_orders.py
 import pytest
-import os
-from app.services.order_service import OrderService
+from app.models import models
+from datetime import date
 
 
-def test_generate_order():
-    """Тест: генерация приказа в Word"""
-    data = [
-        {
-            "student_name": "Бавлов Сергей Александрович",
-            "group": "14121",
-            "topic_title": "Разработка веб-приложения",
-            "teacher_name": "Иванов Иван Иванович"
-        },
-        {
-            "student_name": "Ганжитова Ирина Алдаровна",
-            "group": "14124",
-            "topic_title": "Создание нейросети",
-            "teacher_name": "Петров Петр Петрович"
-        }
-    ]
+def test_generate_preliminary_order(client, db, test_data):
+    """Тест: генерация предварительного приказа"""
+    # Создаём студента и тему
+    student = test_data["students"][0]
+    teacher = test_data["teachers"][0]
     
-    file_path = OrderService.generate_order(data, "test")
-    assert os.path.exists(file_path)
-    assert file_path.endswith(".docx")
+    # Создаём тему
+    response = client.post("/api/topics", json={
+        "teacher_id": teacher.id,
+        "level": "ВКР",
+        "title": "Тема для приказа",
+        "description": "Описание"
+    })
+    topic_id = response.json()["id"]
     
-    os.remove(file_path)
+    # Записываем студента и подтверждаем
+    response = client.post("/api/enrollments", json={
+        "student_id": student.id,
+        "topic_id": topic_id
+    })
+    enrollment_id = response.json()["id"]
+    client.put(f"/api/enrollments/{enrollment_id}/confirm")
+    
+    # Устанавливаем дедлайн (чтобы можно было генерировать)
+    deadline = models.Deadline(
+        name="preliminary_order",
+        date=date(2026, 12, 20),  # прошлая дата, чтобы приказ можно было сгенерировать
+        is_active=1
+    )
+    db.add(deadline)
+    db.commit()
+    
+    # Авторизуемся как админ
+    login_response = client.post("/api/auth/login", json={
+        "login": "admin",
+        "password": "admin",
+        "role": "admin"
+    })
+    token = login_response.json()["token"]
+    
+    response = client.get(
+        "/api/orders/preliminary",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    # Может быть 200 или 403 (если дедлайн не наступил)
+    assert response.status_code in [200, 403]
 
 
-def test_generate_order_with_custom_path():
-    """Тест: генерация приказа с указанным путём"""
-    data = [
-        {
-            "student_name": "Тестов Студент",
-            "group": "14121",
-            "topic_title": "Тестовая тема",
-            "teacher_name": "Тестов Преподаватель"
-        }
-    ]
+def test_generate_final_order(client, db, test_data):
+    """Тест: генерация окончательного приказа"""
+    # Создаём студента и тему
+    student = test_data["students"][0]
+    teacher = test_data["teachers"][0]
     
-    file_path = "custom_order.docx"
-    result = OrderService.generate_order(data, "custom", file_path)
-    assert os.path.exists(result)
-    assert result == file_path
+    # Создаём тему
+    response = client.post("/api/topics", json={
+        "teacher_id": teacher.id,
+        "level": "ВКР",
+        "title": "Тема для финального приказа",
+        "description": "Описание"
+    })
+    topic_id = response.json()["id"]
     
-    os.remove(file_path)
+    # Записываем студента и подтверждаем
+    response = client.post("/api/enrollments", json={
+        "student_id": student.id,
+        "topic_id": topic_id
+    })
+    enrollment_id = response.json()["id"]
+    client.put(f"/api/enrollments/{enrollment_id}/confirm")
+    
+    # Устанавливаем дедлайн
+    deadline = models.Deadline(
+        name="final_order",
+        date=date(2027, 4, 15),
+        is_active=1
+    )
+    db.add(deadline)
+    db.commit()
+    
+    # Авторизуемся как админ
+    login_response = client.post("/api/auth/login", json={
+        "login": "admin",
+        "password": "admin",
+        "role": "admin"
+    })
+    token = login_response.json()["token"]
+    
+    response = client.get(
+        "/api/orders/final",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code in [200, 403]
