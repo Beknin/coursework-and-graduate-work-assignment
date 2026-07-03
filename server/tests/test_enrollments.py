@@ -1,4 +1,6 @@
+# tests/test_enrollments.py
 import pytest
+from app.models import models
 
 
 def test_enroll_student(client, db, test_data):
