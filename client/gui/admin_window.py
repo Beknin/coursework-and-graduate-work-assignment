@@ -3,6 +3,7 @@ from gui.app import App
 from gui.widgets.status_bar import StatusBar
 from gui.frames.admin.users_frame import UsersFrame
 from gui.frames.admin.topics_frame import TopicsFrame
+from gui.frames.admin.assign_frame import AssignFrame
 
 
 class AdminWindow(App):
@@ -28,10 +29,12 @@ class AdminWindow(App):
         self.topics_frame = TopicsFrame(notebook, self.api)
         notebook.add(self.topics_frame, text="Темы")
 
-        for tab_name in ["Назначения", "Отчёты"]:
-            frame = ttk.Frame(notebook)
-            ttk.Label(frame, text=f"Вкладка: {tab_name}").pack(expand=True)
-            notebook.add(frame, text=tab_name)
+        self.assign_frame = AssignFrame(notebook, self.api)
+        notebook.add(self.assign_frame, text="Назначения")
+
+        report_frame = ttk.Frame(notebook)
+        ttk.Label(report_frame, text="Вкладка: Отчёты").pack(expand=True)
+        notebook.add(report_frame, text="Отчёты")
 
         self.status_bar = StatusBar(self.window)
         self.status_bar.set_status("Готово | Администратор")
