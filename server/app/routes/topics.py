@@ -8,7 +8,7 @@ from app.services.deadline_service import DeadlineChecker
 router = APIRouter()
 
 
-@router.get("/api/topics/")
+@router.get("/")
 def get_topics(db: Session = Depends(get_db)):
     topics = db.query(Topic).all()
     return [
@@ -20,7 +20,7 @@ def get_topics(db: Session = Depends(get_db)):
     ]
 
 
-@router.get("/api/topics/free")
+@router.get("/free")
 def get_free_topics(db: Session = Depends(get_db)):
     topics = db.query(Topic).filter(Topic.status == "free").all()
     return [
@@ -32,7 +32,7 @@ def get_free_topics(db: Session = Depends(get_db)):
     ]
 
 
-@router.post("/api/topics/")
+@router.post("/")
 def create_topic(topic_data: dict, db: Session = Depends(get_db)):
     if not DeadlineChecker.can_add_topic(db):
         raise HTTPException(status_code=403, detail="Дедлайн подачи тем истёк")
@@ -56,7 +56,7 @@ def create_topic(topic_data: dict, db: Session = Depends(get_db)):
     return new_topic.to_dict(teacher_name=teacher.full_name)
 
 
-@router.put("/api/topics/{topic_id}")
+@router.put("/{topic_id}")
 def update_topic(topic_id: int, topic_data: dict, db: Session = Depends(get_db)):
     topic = db.query(Topic).filter(Topic.id == topic_id).first()
     if not topic:
@@ -81,7 +81,7 @@ def update_topic(topic_id: int, topic_data: dict, db: Session = Depends(get_db))
     return topic.to_dict(teacher_name=teacher.full_name if teacher else None)
 
 
-@router.delete("/api/topics/{topic_id}")
+@router.delete("/{topic_id}")
 def delete_topic(topic_id: int, db: Session = Depends(get_db)):
     topic = db.query(Topic).filter(Topic.id == topic_id).first()
     if not topic:

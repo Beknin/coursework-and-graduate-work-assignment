@@ -7,12 +7,12 @@ from app.models.models import User
 router = APIRouter()
 
 
-@router.get("/api/teachers/")
+@router.get("/")
 def get_teachers(db: Session = Depends(get_db)):
     return [t.to_dict() for t in User.get_teachers(db)]
 
 
-@router.post("/api/teachers/")
+@router.post("/")
 def create_teacher(data: dict, db: Session = Depends(get_db)):
     full_name = data.get("full_name")
     if not full_name:
@@ -39,7 +39,7 @@ def create_teacher(data: dict, db: Session = Depends(get_db)):
     return teacher.to_dict()
 
 
-@router.put("/api/teachers/{teacher_id}")
+@router.put("/{teacher_id}")
 def update_teacher(teacher_id: int, data: dict, db: Session = Depends(get_db)):
     teacher = User.get_teacher(db, teacher_id)
     if not teacher:
@@ -60,7 +60,7 @@ def update_teacher(teacher_id: int, data: dict, db: Session = Depends(get_db)):
     return teacher.to_dict()
 
 
-@router.delete("/api/teachers/{teacher_id}")
+@router.delete("/{teacher_id}")
 def delete_teacher(teacher_id: int, db: Session = Depends(get_db)):
     teacher = User.get_teacher(db, teacher_id)
     if not teacher:

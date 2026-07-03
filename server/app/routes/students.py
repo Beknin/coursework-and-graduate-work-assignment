@@ -7,7 +7,7 @@ from app.models.models import User
 router = APIRouter()
 
 
-@router.get("/api/students/")
+@router.get("/")
 def get_students(db: Session = Depends(get_db)):
     return [s.to_dict() for s in User.get_students(db)]
 
@@ -37,9 +37,8 @@ def create_student(data: dict, db: Session = Depends(get_db)):
     return student.to_dict()
 
 
-@router.put("/api/students/{student_id}")
+@router.put("/{student_id}")
 def update_student(student_id: int, data: dict, db: Session = Depends(get_db)):
-    """Обновить студента."""
     student = User.get_student(db, student_id)
     if not student:
         raise HTTPException(status_code=404, detail="Студент не найден")
@@ -59,7 +58,7 @@ def update_student(student_id: int, data: dict, db: Session = Depends(get_db)):
     return student.to_dict()
 
 
-@router.delete("/api/students/{student_id}")
+@router.delete("/{student_id}")
 def delete_student(student_id: int, db: Session = Depends(get_db)):
     student = User.get_student(db, student_id)
     if not student:

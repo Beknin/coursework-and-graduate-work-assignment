@@ -9,7 +9,7 @@ from app.services.deadline_service import DeadlineChecker
 router = APIRouter()
 
 
-@router.get("/api/enrollments/")
+@router.get("/")
 def get_enrollments(db: Session = Depends(get_db)):
     enrollments = db.query(Enrollment).all()
     result = []
@@ -23,7 +23,7 @@ def get_enrollments(db: Session = Depends(get_db)):
     return result
 
 
-@router.post("/api/enrollments/")
+@router.post("/")
 def create_enrollment(data: dict, db: Session = Depends(get_db)):
     if not DeadlineChecker.can_enroll(db):
         raise HTTPException(status_code=403, detail="Запись на темы закрыта по дедлайну")
@@ -75,7 +75,7 @@ def create_enrollment(data: dict, db: Session = Depends(get_db)):
     )
 
 
-@router.put("/api/enrollments/{enrollment_id}/confirm")
+@router.put("/{enrollment_id}/confirm")
 def confirm_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
     enrollment = db.query(Enrollment).filter(Enrollment.id == enrollment_id).first()
     if not enrollment:
@@ -111,7 +111,7 @@ def confirm_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
     )
 
 
-@router.put("/api/enrollments/{enrollment_id}/reject")
+@router.put("/{enrollment_id}/reject")
 def reject_enrollment(enrollment_id: int, data: dict = None, db: Session = Depends(get_db)):
     enrollment = db.query(Enrollment).filter(Enrollment.id == enrollment_id).first()
     if not enrollment:
@@ -144,7 +144,7 @@ def reject_enrollment(enrollment_id: int, data: dict = None, db: Session = Depen
     )
 
 
-@router.delete("/api/enrollments/{enrollment_id}")
+@router.delete("/{enrollment_id}")
 def delete_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
     enrollment = db.query(Enrollment).filter(Enrollment.id == enrollment_id).first()
     if not enrollment:
