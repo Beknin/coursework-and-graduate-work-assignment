@@ -1,129 +1,181 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import List
 
 from app.database.db import get_db
-from app.models.models import User
+from app.models import models
+from app.schemas import schemas
+from app.core.security import get_current_admin, get_current_user
 
 router = APIRouter()
 
 
-@router.get("/users")
-def get_users(db: Session = Depends(get_db)):
-    """Получить всех пользователей."""
-    users = db.query(User).all()
-    result = []
-    for u in users:
-        result.append({
-            "id": u.id,
-            "full_name": u.full_name,
-            "login": u.login or "",
-            "role": u.role,
-            "email": u.email,
-            "course": u.course,
-            "group_name": u.group_name,
-            "department": u.department,
-            "position": u.position,
-            "degree": u.degree,
-            "contact": u.contact,
-            "access_level": u.access_level,
-        })
-    return result
+# ===== ПОЛЬЗОВАТЕЛИ (только админ) =====
+
+@router.get("/users", response_model=List[schemas.UserResponse])
+def get_users(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin)  # ← только админ
+):
+    """Получить всех пользователей"""
+    users = db.query(models.User).all()
+    return users
 
 
-@router.get("/admin/users")
-def get_all_users(db: Session = Depends(get_db)):
-    """Получить всех пользователей (админ)."""
-    return get_users(db)
-
-
-@router.post("/users")
-def create_user(user_data: dict, db: Session = Depends(get_db)):
-    """Создать нового пользователя."""
-    full_name = user_data.get("full_name")
-    role = user_data.get("role", "student")
-    login = user_data.get("login") or full_name.lower().replace(" ", "_")
-
-    db_user = User(
-        full_name=full_name,
-        login=login,
-        role=role,
-        email=user_data.get("email"),
-        course=user_data.get("course"),
-        group_name=user_data.get("group_name"),
-        department=user_data.get("department"),
-        position=user_data.get("position"),
-        degree=user_data.get("degree"),
-        contact=user_data.get("contact"),
-        access_level=user_data.get("access_level", "full" if role == "admin" else None),
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-
-    return {
-        "id": db_user.id,
-        "full_name": db_user.full_name,
-        "login": db_user.login,
-        "role": db_user.role,
-    }
-
-
-@router.put("/users/{user_id}")
-def update_user(user_id: int, user_data: dict, db: Session = Depends(get_db)):
-    """Обновить пользователя."""
-    user = db.query(User).filter(User.id == user_id).first()
+@router.get("/users/{user_id}", response_model=schemas.UserResponse)
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin)  # ← только админ
+):
+    """Получить пользователя по ID"""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
+    return user
 
-    # Обновляем только переданные поля
-    updatable_fields = [
-        "full_name", "login", "role", "email",
-        "course", "group_name", "department",
-        "position", "degree", "contact", "access_level"
-    ]
-    for field in updatable_fields:
-        if field in user_data:
-            setattr(user, field, user_data[field])
 
+@router.post("/users", response_model=schemas.UserResponse)
+def create_user(
+    user: schemas.UserCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin)  # ← только админ
+):
+    """Создать нового пользователя (админ)"""
+    # Проверяем, не занят ли логин
+    existing = db.query(models.User).filter(models.User.login == user.login).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Логин уже занят")
+    
+    # Создаём пользователя с паролем по умолчанию
+    from app.core.security import hash_password
+    db_user = models.User(
+        full_name=user.full_name,
+        login=user.login,
+        hashed_password=hash_password("password"),  # пароль по умолчанию
+        role=user.role
+    )
+    db.add(db_user)
+    db.flush()
+    
+    # Создаём запись в соответствующей таблице
+    if user.role == "student":
+        student = models.Student(
+            id=db_user.id,
+            course=user.course or 1,
+            group_name=user.group_name or ""
+        )
+        db.add(student)
+    elif user.role == "teacher":
+        teacher = models.Teacher(
+            id=db_user.id,
+            position=user.position or "",
+            degree=user.degree or "",
+            contact=user.contact or ""
+        )
+        db.add(teacher)
+    elif user.role == "admin":
+        admin = models.Admin(
+            id=db_user.id,
+            access_level="full"
+        )
+        db.add(admin)
+    
     db.commit()
-    db.refresh(user)
+    db.refresh(db_user)
+    return db_user
 
-    return {
-        "id": user.id,
-        "full_name": user.full_name,
-        "login": user.login,
-        "role": user.role,
-    }
+
+@router.put("/users/{user_id}", response_model=schemas.UserResponse)
+def update_user(
+    user_id: int,
+    user_data: schemas.UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin)  # ← только админ
+):
+    """Обновить данные пользователя"""
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    # Обновляем поля
+    if user_data.full_name is not None:
+        db_user.full_name = user_data.full_name
+    if user_data.role is not None:
+        db_user.role = user_data.role
+    if user_data.password is not None:
+        from app.core.security import hash_password
+        db_user.hashed_password = hash_password(user_data.password)
+    
+    db.commit()
+    db.refresh(db_user)
+    return db_user
 
 
 @router.delete("/users/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
-    """Удалить пользователя."""
-    user = db.query(User).filter(User.id == user_id).first()
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin)  # ← только админ
+):
+    """Удалить пользователя"""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    # Нельзя удалить самого себя
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Нельзя удалить самого себя")
+    
     db.delete(user)
     db.commit()
-    return {"status": "deleted"}
+    return {"status": "deleted", "id": user_id}
 
 
-@router.delete("/admin/users/{user_id}")
-def delete_user_admin(user_id: int, db: Session = Depends(get_db)):
-    """Удалить пользователя (админ)."""
-    return delete_user(user_id, db)
-
-
-@router.put("/admin/users/{user_id}/role")
-def change_user_role(user_id: int, new_role: str, db: Session = Depends(get_db)):
-    """Сменить роль пользователя."""
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-
+@router.put("/users/{user_id}/role")
+def change_user_role(
+    user_id: int,
+    new_role: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin)  # ← только админ
+):
+    """Сменить роль пользователя"""
     if new_role not in ["admin", "teacher", "student"]:
         raise HTTPException(status_code=400, detail="Недопустимая роль")
-
+    
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    # Нельзя менять роль у самого себя
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Нельзя менять роль у самого себя")
+    
     user.role = new_role
     db.commit()
-
+    db.refresh(user)
+    
     return {"status": "updated", "id": user_id, "role": user.role}
+
+
+# ===== СТАТИСТИКА (только админ) =====
+
+@router.get("/stats")
+def get_stats(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin)  # ← только админ
+):
+    """Получить статистику по системе"""
+    users_count = db.query(models.User).count()
+    students_count = db.query(models.Student).count()
+    teachers_count = db.query(models.Teacher).count()
+    topics_count = db.query(models.Topic).count()
+    enrollments_count = db.query(models.Enrollment).count()
+    
+    return {
+        "total_users": users_count,
+        "students": students_count,
+        "teachers": teachers_count,
+        "topics": topics_count,
+        "enrollments": enrollments_count
+    }
