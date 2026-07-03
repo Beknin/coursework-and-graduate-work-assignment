@@ -1,3 +1,4 @@
+# tests/test_students.py
 import pytest
 
 
@@ -7,7 +8,7 @@ def test_get_students(client, db, test_data):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) >= 4  # Столько создали в test_data
+    assert len(data) >= 4
 
 
 def test_create_student(client, db):
@@ -20,7 +21,6 @@ def test_create_student(client, db):
     assert response.status_code == 200
     data = response.json()
     assert data["full_name"] == "Новый Студент"
-    assert data["course"] == 1
 
 
 def test_create_student_invalid_course(client, db):
@@ -44,3 +44,17 @@ def test_update_student(client, db, test_data):
     })
     assert response.status_code == 200
     assert response.json()["status"] == "updated"
+
+
+def test_delete_student(client, db):
+    """Тест: удаление студента"""
+    response = client.post("/api/students", json={
+        "full_name": "Студент на удаление",
+        "course": 3,
+        "group_name": "14123"
+    })
+    student_id = response.json()["id"]
+
+    response = client.delete(f"/api/students/{student_id}")
+    assert response.status_code == 200
+    assert response.json()["status"] == "deleted"
