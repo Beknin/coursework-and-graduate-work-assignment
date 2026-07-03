@@ -11,19 +11,22 @@ from app.services.deadline_service import DeadlineChecker
 router = APIRouter()
 
 
-@router.get("/", response_model=List[schemas.TopicResponse], tags=["Темы"])
+@router.get("/", response_model=List[schemas.TopicResponse])
 def get_topics(db: Session = Depends(get_db)):
     """Получить все темы"""
     topics = db.query(models.Topic).all()
     
     result = []
     for topic in topics:
+        # Используем from_attributes=True для преобразования SQLAlchemy-объекта
+        topic_data = schemas.TopicResponse.model_validate(topic, from_attributes=True)
+        
+        # Проверяем, занята ли тема
         is_taken = db.query(models.Enrollment).filter(
             models.Enrollment.topic_id == topic.id,
             models.Enrollment.status == "confirmed"
         ).first() is not None
         
-        topic_data = schemas.TopicResponse.model_validate(topic)
         topic_data.status = "taken" if is_taken else "free"
         result.append(topic_data)
     
@@ -32,14 +35,23 @@ def get_topics(db: Session = Depends(get_db)):
 
 @router.post("/", response_model=schemas.TopicResponse)
 def create_topic(topic: schemas.TopicCreate, db: Session = Depends(get_db)):
-    """Создать новую тему"""
+    """Создать новую тему (только преподаватель)"""
+    # Проверка дедлайна
     if not DeadlineChecker.can_add_topic(db):
         raise HTTPException(status_code=403, detail="Период ввода тем закончился")
     
+    # Проверяем преподавателя
     teacher = db.query(models.Teacher).filter(models.Teacher.id == topic.teacher_id).first()
     if not teacher:
-        raise HTTPException(status_code=404, detail="Преподаватель не найден")
+        # Если таблицы Teacher нет, ищем в User
+        teacher = db.query(models.User).filter(
+            models.User.id == topic.teacher_id,
+            models.User.role == "teacher"
+        ).first()
+        if not teacher:
+            raise HTTPException(status_code=404, detail="Преподаватель не найден")
     
+    # Создаём тему
     db_topic = models.Topic(
         teacher_id=topic.teacher_id,
         level=topic.level,
@@ -51,11 +63,13 @@ def create_topic(topic: schemas.TopicCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_topic)
     
-    return schemas.TopicResponse.model_validate(db_topic)
+    return schemas.TopicResponse.model_validate(db_topic, from_attributes=True)
 
 
 @router.get("/free", response_model=List[schemas.TopicResponse])
 def get_free_topics(db: Session = Depends(get_db)):
+    """Получить свободные темы (без подтверждённых записей)"""
+    # ID тем, на которые есть подтверждённые записи
     taken_ids = db.query(models.Enrollment.topic_id).filter(
         models.Enrollment.status == "confirmed"
     ).subquery()
@@ -66,7 +80,6 @@ def get_free_topics(db: Session = Depends(get_db)):
     
     result = []
     for topic in free_topics:
-        # Правильный способ: model_validate с from_attributes=True
         topic_data = schemas.TopicResponse.model_validate(topic, from_attributes=True)
         topic_data.status = "free"
         result.append(topic_data)
@@ -74,9 +87,22 @@ def get_free_topics(db: Session = Depends(get_db)):
     return result
 
 
+@router.get("/teacher/{teacher_id}", response_model=List[schemas.TopicResponse])
+def get_topics_by_teacher(teacher_id: int, db: Session = Depends(get_db)):
+    """Получить темы конкретного преподавателя"""
+    topics = db.query(models.Topic).filter(models.Topic.teacher_id == teacher_id).all()
+    
+    result = []
+    for topic in topics:
+        topic_data = schemas.TopicResponse.model_validate(topic, from_attributes=True)
+        result.append(topic_data)
+    
+    return result
+
+
 @router.put("/{topic_id}")
 def update_topic(topic_id: int, topic: schemas.TopicCreate, db: Session = Depends(get_db)):
-    """Изменить тему"""
+    """Изменить тему (только преподаватель с разрешения админа)"""
     if not DeadlineChecker.can_change_topic(db):
         raise HTTPException(status_code=403, detail="Период изменения тем закончился")
     
@@ -98,6 +124,7 @@ def update_topic(topic_id: int, topic: schemas.TopicCreate, db: Session = Depend
 @router.delete("/{topic_id}")
 def delete_topic(topic_id: int, db: Session = Depends(get_db)):
     """Удалить тему (только админ)"""
+    # Проверяем, есть ли записи
     count = db.query(models.Enrollment).filter(models.Enrollment.topic_id == topic_id).count()
     if count > 0:
         raise HTTPException(status_code=400, detail="Нельзя удалить тему с записями")
