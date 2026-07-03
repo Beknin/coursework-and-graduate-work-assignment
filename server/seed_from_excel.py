@@ -45,7 +45,7 @@ def load_students_from_excel(file_path: str):
             elif "Дизайн" in sheet_name:
                 group = sheet_name.replace("Дизайн", "").strip()
             elif sheet_name in ["УП", "РиСО", "Туризм", "Сервис"]:
-                # Для этих листов группа не нужна, это другие специальности
+                # это другие специальности
                 # Пропускаем их или назначаем группу по названию
                 group = sheet_name
             elif "ПИ" in sheet_name:
